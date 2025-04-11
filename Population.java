@@ -1,4 +1,3 @@
-package peetemuan5;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -10,7 +9,7 @@ public class Population {
 
     int[] population_array; 
     String[] binaryString_array;
-    int fitness[];
+    double fitness[];
     double ratio[]; //menyimpan proporsi fitness dibanding total fitness
     String pairs_binaryString[] = new String[6]; //menyimpan pasangan kromosom untuk crossover/ side by side index pair (0,1),(2,3),(4,5)
     int min, secondMin; //menyimpan index individu/kromosom dengan fitness terendah
@@ -19,20 +18,22 @@ public class Population {
     public void initializePopulation() {
         population_array = new int[populationSize]; //menyimpan populasi dalam integer
         binaryString_array = new String[populationSize]; //menyimpan populasi dalam bentuk biner
-        fitness = new int[populationSize]; //menyimpan nilai fitness
+        fitness = new double[populationSize]; //menyimpan nilai fitness
         ratio = new double[populationSize]; //menyimpan ratio
 
         Random random = new Random(); //menghasilkan bilangan acak 
         for (int i = 0; i < populationSize; i++) { //sampai ke-6
             population_array[i] = random.nextInt((maxPop - minPop) + 1) + minPop;
-            System.out.print(population_array[i] + " "); //mencetak 6 bilangan acak 0-15
+            
         }
-        System.out.println(); 
+        System.out.printf("\nInitial population values: %s \n" ,Arrays.toString(population_array));
     }
 
     public void startGeneric() { //ITERASI/LOOPING GENERATION
         int loopCount = 0; //jumlah iterasi yang dijalankan
         while (loopCount++ < numberOfIteration) { //sampai ke-4
+            System.out.println("\nGeneration "+ loopCount);
+            System.out.println("Current population : "+ Arrays.toString(population_array)); //mencetak populasi yang digenerate
             populationToBinaryString(); //mengkonversi setiap nilai populasi ke biner
             double totalFitness = calcFitness(); //menghitung fitness
             calcRatio(totalFitness); //menghitung rasio
@@ -40,12 +41,30 @@ public class Population {
             selectAndMakePairs(); //seleksi individu berdasarkan ratio
             crossover();
             mutation();
-
-            for (int i = 0; i < populationSize; i++) {
-                System.out.print(population_array[i] + " "); //mencetak populasi yang digenerate
-            }
-            System.out.println();
+            System.out.println("New population values : "+ Arrays.toString(population_array)); //mencetak populasi yang digenerate
         }
+        findBestSolution();
+    }
+
+    private void findBestSolution() {
+        double bestFitness = Double.NEGATIVE_INFINITY;
+        int bestValue = -1;
+        
+        // Calculate final fitness values and find the best
+        for (int i = 0; i < populationSize; i++) {
+            int x = population_array[i];
+            double fx = Math.pow(x, 2) * Math.exp(-x);
+            
+            if (fx > bestFitness) {
+                bestFitness = fx;
+                bestValue = x;
+            }
+        }
+        
+        System.out.println("\n----- FINAL RESULT -----");
+        System.out.println("Best population value: " + bestValue);
+        System.out.println("Best fitness value: " + bestFitness);
+        System.out.println("f(" + bestValue + ") = " + bestValue + "² * e^-" + bestValue + " = " + bestFitness);
     }
 
     //mutation
@@ -57,7 +76,6 @@ public class Population {
         int i = 0, first = 0, second = 0;
         while (i < 3) {
             int index = random.nextInt(((pairs_binaryString.length - 1) - 0) + 1) + 0; //memilih individu dari individu 0 sampai 5
-            System.out.println(index);
             if (i == 0) {
                 x1 = pairs_binaryString[index];
                 first = index;//to ensure unique random
@@ -71,7 +89,7 @@ public class Population {
                 i++;
             }
         }
-        System.out.println("selected for mutation: " + x1 + " " + x2 + " " + x3);
+        System.out.printf("Selected for mutation : [%s, %s, %s]\n" , x1, x2, x3);
 
         //select random bit for mutation
         int bit = random.nextInt(((binarySizeLimit - 1) - 0) + 1) + 0; //0 to 3
@@ -104,10 +122,9 @@ public class Population {
         }
         x3 = new String(ch);
 
-        System.out.println("after mutation: " + x1 + " " + x2 + " " + x3); //hasil mutasi 3 individu
 
-        //choose best two
         int mutated_array[] = {toInteger(x1), toInteger(x2), toInteger(x3)};//keeps int from binaryString
+        System.out.println("Mutated values : " + Arrays.toString(mutated_array)); //mencetak hasil mutasi
         Arrays.sort(mutated_array); //mengurutkan dari yang terkecil
 
         System.out.println(population_array[min] + " " + population_array[secondMin] + " updated to " + mutated_array[1] + " " + mutated_array[2]);
@@ -121,50 +138,40 @@ public class Population {
     //crossover
     public void crossover() {
         Random random = new Random();
-        //cross over dilakukan dengan menukar bit yang bersebelahan
-        int bit1 = random.nextInt(((binarySizeLimit - 2) - 0) + 1) + 0;  //0 to 2
-        int bit2 = bit1 + 1; //next bit
-        System.out.println("crossover bits: " + bit1 + " " + bit2);
-
-        for (int i = 0; i < 6; i += 2) { //crossover dilakukan antar 2 individu
-            char ch1[] = pairs_binaryString[i].toCharArray();
-            char ch2[] = pairs_binaryString[i + 1].toCharArray();
-
-            char temp1 = ch1[bit1];
-            char temp2 = ch1[bit2];
-
-            ch1[bit1] = ch2[bit1];
-            ch1[bit2] = ch2[bit2];
-
-            ch2[bit1] = temp1;
-            ch2[bit2] = temp2;
+        // Select a single crossover point
+        int crossoverPoint = random.nextInt(binarySizeLimit - 1) + 1;  // 1 to binarySizeLimit-1
+        System.out.println("crossover point: " + crossoverPoint);
+    
+        for (int i = 0; i < 6; i += 2) { // Process each pair of chromosomes
+            char[] ch1 = pairs_binaryString[i].toCharArray();
+            char[] ch2 = pairs_binaryString[i + 1].toCharArray();
+    
+            // Swap all bits from the crossover point to the end
+            for (int j = crossoverPoint; j < binarySizeLimit; j++) {
+                char temp = ch1[j];
+                ch1[j] = ch2[j];
+                ch2[j] = temp;
+            }
             
-            //memperbarui pasangan populasi dengan hasil crossover
+            // Update the pairs array with the crossed chromosomes
             pairs_binaryString[i] = new String(ch1);
             pairs_binaryString[i + 1] = new String(ch2);
         }
-
-        System.out.println("after crossover");
-        for (int i = 0; i < pairs_binaryString.length; i++) {
-            System.out.print(pairs_binaryString[i] + " ");
-        }
-        System.out.println();
+    
+        System.out.println("After crossover: " + Arrays.toString(pairs_binaryString));
     }
 
     //select bests and make pairs
     public void selectAndMakePairs() {
         Node[] nodeArray = Priority.setPriority(ratio, binaryString_array);//mengurutkan array dari ratio
-        int max = nodeArray[nodeArray.length - 1].index; //individu dengan fitness tertinggi
         min = nodeArray[0].index; //individu dengan fitness terendah
         secondMin = nodeArray[1].index; //terendah kedua
-        
-        //menampilakn ratio semua individu
+        System.out.print("Sort Ratio : ");
         for (int i = 0; i < nodeArray.length; i++) {
             System.out.print(nodeArray[i].ratioValue + " ");
-        
-        //menampilakan individu dalam biner
         }
-        System.out.println();
+
+        System.out.print("\nSort binaryString : ");
         for (int i = 0; i < nodeArray.length; i++) {
             System.out.print(nodeArray[i].binaryString + " ");
 
@@ -181,7 +188,6 @@ public class Population {
         Random random = new Random();
         for (int i = 0; i < 5; i++) {
             int index = random.nextInt(((populationSize - 1) - 2) + 1) + 2;//not taking max, min, secondMin val
-            System.out.println(index);
             if (i == 0) {
                 x2 += nodeArray[index].binaryString;
                 pairs_binaryString[++pairIndexCounter] = x2;//ensure a pair of max
@@ -199,7 +205,7 @@ public class Population {
                 pairs_binaryString[++pairIndexCounter] = x6;
             }
         }
-        System.out.println("after pairing: " + x1 + " " + x2 + " " + x3 + " " + x4 + " " + x5 + " " + x6);
+        System.out.printf("After Pairing : (%s, %s) (%s, %s) (%s, %s) \n", x1, x2, x3, x4, x5, x6);
     }
 
     //takes total fitness ratioValue
@@ -207,22 +213,20 @@ public class Population {
     public void calcRatio(double totalFitness) {
         for (int i = 0; i < populationSize; i++) {
             ratio[i] = (fitness[i] * 100) / totalFitness;
-            System.out.print(ratio[i] + " ");
         }
-        System.out.println();
+        System.out.println("Ratio by Fitness : "+ Arrays.toString(ratio));
     }
 
     //calculate fitness for each population and return total fitness
-    public int calcFitness() {
-        int totalFitness = 0;
+    public double calcFitness() {
+        double totalFitness = 0.0;
         for (int i = 0; i < populationSize; i++) {
             int x = population_array[i];
-            fitness[i] = (15 * x) - (x * x);
-
+            double fx = Math.pow(x, 2) * Math.exp(-x);
+            fitness[i] = fx;  // Ensure fitness is now a double[]
             totalFitness += fitness[i];
-            System.out.print(fitness[i] + " ");
         }
-        System.out.println();
+        System.out.println("Fitness Values : " + Arrays.toString(fitness));
         return totalFitness;
     }
 
@@ -231,6 +235,7 @@ public class Population {
         for (int i = 0; i < populationSize; i++) {
             binaryString_array[i] = getBinaryString(population_array[i]);
         }
+        System.out.println("Binary String : " + Arrays.toString(binaryString_array));
     }
 
     //takes an integer and return it's binary ratioValue in string format

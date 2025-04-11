@@ -1,6 +1,3 @@
-package peetemuan5;
-import java.util.Queue;
-
 public class Priority {
     
     public static Node[] setPriority(double[] ratio_array, String []binaryString_array) {
